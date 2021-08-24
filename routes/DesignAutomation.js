@@ -1,9 +1,7 @@
 const _path = require("path");
 const _fs = require("fs");
-const _url = require("url");
 const express = require("express");
 const http = require("https");
-const formdata = require("form-data");
 const bodyParser = require("body-parser");
 const multer = require("multer");
 const router = express.Router();
@@ -12,7 +10,10 @@ const config = require("../config");
 const dav3 = require("autodesk.forge.designautomation");
 const ForgeAPI = require("forge-apis");
 const { Utils } = require("./utils");
+const { getAviEngine } = require("./logic/GetAvailableEngines");
+// console.log(`AviEng - ${getAviEngine}`);
 // console.log(`Utils - ${Utils}`);
+
 router.use(bodyParser.json());
 
 // Middleware for obtaining a token for each request.
@@ -36,27 +37,7 @@ router.get("/appbundles", async (/*GetLocalBundles*/ req, res) => {
 /// <summary>
 /// Return a list of available engines
 /// </summary>
-router.get(
-  "/forge/designautomation/engines",
-  async (/*GetAvailableEngines*/ req, res) => {
-    let that = this;
-    let Allengines = [];
-    let paginationToken = null;
-    try {
-      const api = await Utils.dav3API(req.oauth_token);
-      while (true) {
-        let engines = await api.getEngines({ page: paginationToken });
-        Allengines = Allengines.concat(engines.data);
-        if (engines.paginationToken == null) break;
-        paginationToken = engines.paginationToken;
-      }
-      res.json(Allengines.sort()); // return list of engines
-    } catch (ex) {
-      console.error(ex);
-      res.json([]);
-    }
-  }
-);
+router.get("/forge/designautomation/engines", getAviEngine);
 
 /// <summary>
 /// Define a new appbundle
