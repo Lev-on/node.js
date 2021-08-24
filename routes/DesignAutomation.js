@@ -11,184 +11,29 @@ const dav3 = require("autodesk.forge.designautomation");
 const ForgeAPI = require("forge-apis");
 const { Utils } = require("./utils");
 const { getAviEngine } = require("./logic/GetAvailableEngines");
+const { createAppBundle } = require("./logic/CreateAppBundle");
+// console.log(`Create - ${createAppBundle}`);
 // console.log(`AviEng - ${getAviEngine}`);
 // console.log(`Utils - ${Utils}`);
 
 router.use(bodyParser.json());
 
-// Middleware for obtaining a token for each request.
 router.use(async (req, res, next) => {
   req.oauth_client = await getClient(/*config.scopes.internal*/);
   req.oauth_token = req.oauth_client.getCredentials();
   next();
 });
 
-/// <summary>
-/// Names of app bundles on this project
-/// </summary>
 router.get("/appbundles", async (/*GetLocalBundles*/ req, res) => {
-  // this folder is placed under the public folder, which may expose the bundles
-  // but it was defined this way so it be published on most hosts easily
   let bundles = await Utils.findFiles(Utils.LocalBundlesFolder, ".zip");
   bundles = bundles.map((fn) => _path.basename(fn, ".zip"));
   res.json(bundles);
 });
 
-/// <summary>
-/// Return a list of available engines
-/// </summary>
 router.get("/forge/designautomation/engines", getAviEngine);
 
-/// <summary>
-/// Define a new appbundle
-/// </summary>
-router.post(
-  "/forge/designautomation/appbundles",
-  async (/*CreateAppBundle*/ req, res) => {
-    const appBundleSpecs = req.body;
+router.post("/forge/designautomation/appbundles", createAppBundle);
 
-    // basic input validation
-    const zipFileName = appBundleSpecs.zipFileName;
-    const engineName = appBundleSpecs.engine;
-
-    // standard name for this sample
-    const appBundleName = zipFileName + "AppBundle";
-
-    // check if ZIP with bundle is here
-    const packageZipPath = _path.join(
-      Utils.LocalBundlesFolder,
-      zipFileName + ".zip"
-    );
-
-    // get defined app bundles
-    const api = await Utils.dav3API(req.oauth_token);
-    let appBundles = null;
-    try {
-      appBundles = await api.getAppBundles();
-    } catch (ex) {
-      console.error(ex);
-      return res.status(500).json({
-        diagnostic: "Failed to get the Bundle list",
-      });
-    }
-    // check if app bundle is already define
-    let newAppVersion = null;
-    const qualifiedAppBundleId = `${Utils.NickName}.${appBundleName}+${Utils.Alias}`;
-    if (!appBundles.data.includes(qualifiedAppBundleId)) {
-      // create an appbundle (version 1)
-      // const appBundleSpec = {
-      //         package: appBundleName,
-      //         engine: engineName,
-      //         id: appBundleName,
-      //         description: `Description for ${appBundleName}`
-      //     };
-      const appBundleSpec = dav3.AppBundle.constructFromObject({
-        package: appBundleName,
-        engine: engineName,
-        id: appBundleName,
-        description: `Description for ${appBundleName}`,
-      });
-      try {
-        newAppVersion = await api.createAppBundle(appBundleSpec);
-      } catch (ex) {
-        console.error(ex);
-        return res.status(500).json({
-          diagnostic: "Cannot create new app",
-        });
-      }
-
-      // create alias pointing to v1
-      const aliasSpec =
-        //dav3.Alias.constructFromObject({
-        {
-          id: Utils.Alias,
-          version: 1,
-        };
-      try {
-        const newAlias = await api.createAppBundleAlias(
-          appBundleName,
-          aliasSpec
-        );
-      } catch (ex) {
-        console.error(ex);
-        return res.status(500).json({
-          diagnostic: "Failed to create an alias",
-        });
-      }
-    } else {
-      // create new version
-      const appBundleSpec =
-        //dav3.AppBundle.constructFromObject({
-        {
-          engine: engineName,
-          description: appBundleName,
-        };
-      try {
-        newAppVersion = await api.createAppBundleVersion(
-          appBundleName,
-          appBundleSpec
-        );
-      } catch (ex) {
-        console.error(ex);
-        return res.status(500).json({
-          diagnostic: "Cannot create new version",
-        });
-      }
-
-      // update alias pointing to v+1
-      const aliasSpec =
-        //dav3.AliasPatch.constructFromObject({
-        {
-          version: newAppVersion.version,
-        };
-      try {
-        const newAlias = await api.modifyAppBundleAlias(
-          appBundleName,
-          Utils.Alias,
-          aliasSpec
-        );
-      } catch (ex) {
-        console.error(ex);
-        return res.status(500).json({
-          diagnostic: "Failed to create an alias",
-        });
-      }
-    }
-
-    // upload the zip with .bundle
-    try {
-      // curl https://bucketname.s3.amazonaws.com/
-      // -F key = apps/myApp/myfile.zip
-      // -F content-type = application/octet-stream
-      // -F policy = eyJleHBpcmF0aW9uIjoiMjAxOC0wNi0yMVQxMzo...(trimmed)
-      // -F x-amz-signature = 800e52d73579387757e1c1cd88762...(trimmed)
-      // -F x-amz-credential = AKIAIOSFODNN7EXAMPLE/20180621/us-west-2/s3/aws4_request/
-      // -F x-amz-algorithm = AWS4-HMAC-SHA256
-      // -F x-amz-date = 20180621T091656Z
-      // -F file=@E:myfile.zip
-      //
-      // The ‘file’ field must be at the end, all fields after ‘file’ will be ignored.
-      await Utils.uploadFormDataWithFile(
-        packageZipPath,
-        newAppVersion.uploadParameters.endpointURL,
-        newAppVersion.uploadParameters.formData
-      );
-    } catch (ex) {
-      console.error(ex);
-      return res.status(500).json({
-        diagnostic: "Failed to upload bundle on s3",
-      });
-    }
-
-    res.status(200).json({
-      appBundle: qualifiedAppBundleId,
-      version: newAppVersion.version,
-    });
-  }
-);
-/// <summary>
-/// CreateActivity a new Activity
-/// </summary>
 router.post(
   "/forge/designautomation/activities",
   async (/*CreateActivity*/ req, res) => {
@@ -294,14 +139,11 @@ router.post(
   }
 );
 
-/// <summary>
-/// Get all Activities defined for this account
-/// </summary>
 router.get(
   "/forge/designautomation/activities",
   async (/*GetDefinedActivities*/ req, res) => {
     const api = await Utils.dav3API(req.oauth_token);
-    // filter list of
+
     let activities = null;
     try {
       activities = await api.getActivities();
@@ -324,9 +166,7 @@ router.get(
     res.status(200).json(definedActivities);
   }
 );
-/// <summary>
-/// Start a new workitem
-/// </summary>
+
 router.post(
   "/forge/designautomation/workitems",
   multer({
@@ -348,10 +188,8 @@ router.post(
       ContentRootPath,
       _path.basename(req.file.originalname)
     );
-    //const stream = _fs.createReasStream(fileSavePath, FileMode.Create)) await input.inputFile.CopyToAsync(stream);
 
     // upload file to OSS Bucket
-    // 1. ensure bucket existis
     const bucketKey = Utils.NickName.toLowerCase() + "-designautomation";
     try {
       let payload = new ForgeAPI.PostBucketsPayload();
@@ -407,15 +245,6 @@ router.post(
         "data:application/json, " +
         JSON.stringify(inputJson).replace(/"/g, "'"),
     };
-    // 3. output file
-    // const outputFileNameOSS = `${new Date().toISOString().replace (/[-T:\.Z]/gm, '').substring(0, 14)}_output_${_path.basename(req.file.originalname)}`; // avoid overriding
-    // const outputFileArgument = {
-    //     url: `https://developer.api.autodesk.com/oss/v2/buckets/${bucketKey}/objects/${outputFileNameOSS}`,
-    //     verb: dav3.Verb.put,
-    //     headers: {
-    //         Authorization: `Bearer ${req.oauth_token.access_token}`
-    //     }
-    // };
 
     // Better to use a presigned url to avoid the token to expire
     const outputFileNameOSS = `${new Date()
@@ -424,7 +253,6 @@ router.post(
       .substring(0, 14)}_output_${_path.basename(req.file.originalname)}`; // avoid overriding
     let signedUrl = null;
     try {
-      // write signed resource requires the object to already exist :(
       await new ForgeAPI.ObjectsApi().copyTo(
         bucketKey,
         inputFileNameOSS,
@@ -453,7 +281,6 @@ router.post(
       });
     }
     const outputFileArgument = {
-      //url: `https://developer.api.autodesk.com/oss/v2/buckets/${bucketKey}/objects/${outputFileNameOSS}`,
       url: signedUrl,
       headers: {
         Authorization: "",
@@ -462,8 +289,6 @@ router.post(
       verb: dav3.Verb.put,
     };
 
-    // prepare & submit workitem
-    // the callback contains the connectionId (used to identify the client) and the outputFileName of this workitem
     const callbackUrl = `${config.credentials.webhook_url}/api/forge/callback/designautomation?id=${browerConnectionId}&outputFileName=${outputFileNameOSS}&inputFileName=${inputFileNameOSS}`;
     const workItemSpec = {
       activityId: activityName,
@@ -493,25 +318,18 @@ router.post(
   }
 );
 
-/// <summary>
-/// Callback from Design Automation Workitem (onProgress or onComplete)
-/// </summary>
 router.post(
   "/forge/callback/designautomation",
   async (/*OnCallback*/ req, res) => {
-    // your webhook should return immediately! we could use Hangfire to schedule a job instead
-    // ALWAYS return ok (200)
     res.status(200).end();
 
     try {
       const socketIO = require("../server").io;
 
-      // your webhook should return immediately! we can use Hangfire to schedule a job
       const bodyJson = req.body;
       socketIO.to(req.query.id).emit("onComplete", bodyJson);
 
       http.get(bodyJson.reportUrl, (response) => {
-        //socketIO.to(req.query.id).emit('onComplete', response);
         response.setEncoding("utf8");
         let rawData = "";
         response.on("data", (chunk) => {
@@ -521,13 +339,11 @@ router.post(
           socketIO.to(req.query.id).emit("onComplete", rawData);
         });
       });
-      //socketIO.to(req.query.id).emit('downloadReport', bodyJson.reportUrl);
 
       const objectsApi = new ForgeAPI.ObjectsApi();
       const bucketKey = Utils.NickName.toLowerCase() + "-designautomation";
       if (bodyJson.status === "success") {
         try {
-          // generate a signed URL to download the result file and send to the client
           const signedUrl = await objectsApi.createSignedResource(
             bucketKey,
             req.query.outputFileName,
@@ -557,7 +373,6 @@ router.post(
 
       // delete the input file (we do not need it anymore)
       try {
-        /*await*/
         objectsApi.deleteObject(
           bucketKey,
           req.query.inputFileName,
@@ -573,14 +388,10 @@ router.post(
   }
 );
 
-/// <summary>
-/// Clear the accounts (for debugging purpouses)
-/// </summary>
 router.delete(
   "/forge/designautomation/account",
   async (/*ClearAccount*/ req, res) => {
     let api = await Utils.dav3API(req.oauth_token);
-    // clear account
     await api.deleteForgeApp("me");
     res.status(200).end();
   }
