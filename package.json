@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "nodemon --inspect start.js"
+    "debug": "nodemon --inspect start.js"
   },
   "keywords": [],
   "author": "",
