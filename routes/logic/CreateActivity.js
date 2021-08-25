@@ -96,8 +96,6 @@ const createActivity = async (req, res) => {
     return;
   }
 
-  // as this activity points to a AppBundle "dev" alias (which points to the last version of the bundle),
-  // there is no need to update it (for this sample), but this may be extended for different contexts
   res.status(200).json({
     activity: "Activity already defined",
   });
