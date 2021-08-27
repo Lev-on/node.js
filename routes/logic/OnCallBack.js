@@ -1,9 +1,21 @@
 const http = require("https");
 const ForgeAPI = require("forge-apis");
 const { Utils } = require("../utils");
+const fetch = require("node-fetch");
+const fs = require("fs");
+const Downloader = require("nodejs-file-downloader");
+const zl = require("zip-lib");
 
 const onCallback = async (req, res) => {
   res.status(200).end();
+
+  const delete_file = async (file_name) => {
+    return await fs.unlink(`./dow/${file_name}`, (err) => {
+      if (err) console.log(err);
+
+      console.log("file Deleted");
+    });
+  };
 
   try {
     const socketIO = require("../../server").io;
@@ -39,6 +51,34 @@ const onCallback = async (req, res) => {
           req.oauth_client,
           req.oauth_token
         );
+
+        const downloader = new Downloader({
+          url: signedUrl.body.signedUrl,
+          directory: "./dow",
+        });
+
+        try {
+          await downloader
+            .download()
+            .then(() => {
+              zl.archiveFile(
+                `./dow/${req.query.outputFileName}`,
+                `./zip/${req.query.outputFileName}.zip`
+              );
+            })
+            .then(
+              async function () {
+                console.log("done");
+              },
+              function (err) {
+                console.log(err);
+              }
+            );
+          console.log("All done");
+        } catch (error) {
+          console.log("Download failed", error);
+        }
+
         socketIO
           .to(req.query.id)
           .emit("downloadResult", signedUrl.body.signedUrl);
@@ -52,6 +92,11 @@ const onCallback = async (req, res) => {
           );
       }
     }
+    // await fs.promises.unlink(`./dow/${req.query.outputFileName}`, (err) => {
+    //   if (err) throw err;
+
+    //   console.log("file Deleted");
+    // });
 
     // delete the input file (we do not need it anymore)
     try {

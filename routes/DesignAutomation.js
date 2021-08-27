@@ -9,6 +9,7 @@ const { getAviEngine } = require("./logic/GetAvailableEngines");
 const { createAppBundle } = require("./logic/CreateAppBundle");
 const { createActivity } = require("./logic/CreateActivity");
 const { getDefinedActivities } = require("./logic/GetDefinedActivities");
+const { GetLocalBundles } = require("./logic/GetLocalBundles");
 const { onCallback } = require("./logic/OnCallBack");
 const { clearAccount } = require("./logic/ClearAccount");
 const { startWorkitem } = require("./logic/StartWorkitem");
