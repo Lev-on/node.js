@@ -17,6 +17,8 @@ const onCallback = async (req, res) => {
     });
   };
 
+  const outputFileName_dow = req.query.outputFileName;
+
   try {
     const socketIO = require("../../server").io;
 
@@ -82,6 +84,13 @@ const onCallback = async (req, res) => {
         socketIO
           .to(req.query.id)
           .emit("downloadResult", signedUrl.body.signedUrl);
+
+        socketIO
+          .to(req.query.id)
+          .emit(
+            "downloadResultZip",
+            `http://localhost:3004/api/zipdownload/${req.query.outputFileName}.zip`
+          );
       } catch (ex) {
         console.error(ex);
         socketIO
