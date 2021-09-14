@@ -7,23 +7,29 @@ const multer = require("multer");
 const router = express.Router();
 const { getClient } = require("./common/oauth");
 const config = require("../config");
+// @ts-ignore
 const dav3 = require("autodesk.forge.designautomation");
 const ForgeAPI = require("forge-apis");
 const { Utils } = require("./utils");
 const { getAviEngine } = require("./logic/GetAvailableEngines");
 const { createAppBundle } = require("./logic/CreateAppBundle");
+const {CreateActivity} = require("./logic/CreateActivity")
 // console.log(`Create - ${createAppBundle}`);
 // console.log(`AviEng - ${getAviEngine}`);
 // console.log(`Utils - ${Utils}`);
 
 router.use(bodyParser.json());
 
+// @ts-ignore
 router.use(async (req, res, next) => {
+  // @ts-ignore
   req.oauth_client = await getClient(/*config.scopes.internal*/);
+  // @ts-ignore
   req.oauth_token = req.oauth_client.getCredentials();
   next();
 });
 
+// @ts-ignore
 router.get("/appbundles", async (/*GetLocalBundles*/ req, res) => {
   let bundles = await Utils.findFiles(Utils.LocalBundlesFolder, ".zip");
   bundles = bundles.map((fn) => _path.basename(fn, ".zip"));
@@ -35,117 +41,17 @@ router.get("/forge/designautomation/engines", getAviEngine);
 router.post("/forge/designautomation/appbundles", createAppBundle);
 
 router.post(
-  "/forge/designautomation/activities",
-  async (/*CreateActivity*/ req, res) => {
-    const activitySpecs = req.body;
-
-    // basic input validation
-    const zipFileName = activitySpecs.zipFileName;
-    const engineName = activitySpecs.engine;
-
-    // standard name for this sample
-    const appBundleName = zipFileName + "AppBundle";
-    const activityName = zipFileName + "Activity";
-
-    // get defined activities
-    const api = await Utils.dav3API(req.oauth_token);
-    let activities = null;
-    try {
-      activities = await api.getActivities();
-    } catch (ex) {
-      console.error(ex);
-      return res.status(500).json({
-        diagnostic: "Failed to get activity list",
-      });
-    }
-    const qualifiedActivityId = `${Utils.NickName}.${activityName}+${Utils.Alias}`;
-    if (!activities.data.includes(qualifiedActivityId)) {
-      // define the activity
-      // ToDo: parametrize for different engines...
-      const engineAttributes = Utils.EngineAttributes(engineName);
-      const commandLine = engineAttributes.commandLine.replace(
-        "{0}",
-        appBundleName
-      );
-      const activitySpec = {
-        id: activityName,
-        appbundles: [`${Utils.NickName}.${appBundleName}+${Utils.Alias}`],
-        commandLine: [commandLine],
-        engine: engineName,
-        parameters: {
-          inputFile: {
-            description: "input file",
-            localName: "$(inputFile)",
-            ondemand: false,
-            required: true,
-            verb: dav3.Verb.get,
-            zip: false,
-          },
-          inputJson: {
-            description: "input json",
-            localName: "params.json",
-            ondemand: false,
-            required: false,
-            verb: dav3.Verb.get,
-            zip: false,
-          },
-          outputFile: {
-            description: "output file",
-            localName: "outputFile." + engineAttributes.extension,
-            ondemand: false,
-            required: true,
-            verb: dav3.Verb.put,
-            zip: false,
-          },
-        },
-        settings: {
-          script: {
-            value: engineAttributes.script,
-          },
-        },
-      };
-      try {
-        const newActivity = await api.createActivity(activitySpec);
-      } catch (ex) {
-        console.error(ex);
-        return res.status(500).json({
-          diagnostic: "Failed to create new activity",
-        });
-      }
-      // specify the alias for this Activity
-      const aliasSpec = {
-        id: Utils.Alias,
-        version: 1,
-      };
-      try {
-        const newAlias = await api.createActivityAlias(activityName, aliasSpec);
-      } catch (ex) {
-        console.error(ex);
-        return res.status(500).json({
-          diagnostic: "Failed to create new alias for activity",
-        });
-      }
-      res.status(200).json({
-        activity: qualifiedActivityId,
-      });
-      return;
-    }
-
-    // as this activity points to a AppBundle "dev" alias (which points to the last version of the bundle),
-    // there is no need to update it (for this sample), but this may be extended for different contexts
-    res.status(200).json({
-      activity: "Activity already defined",
-    });
-  }
-);
+  "/forge/designautomation/activities", CreateActivity);
 
 router.get(
   "/forge/designautomation/activities",
   async (/*GetDefinedActivities*/ req, res) => {
+    // @ts-ignore
     const api = await Utils.dav3API(req.oauth_token);
 
     let activities = null;
     try {
+      // @ts-ignore
       activities = await api.getActivities();
     } catch (ex) {
       console.error(ex);
@@ -184,6 +90,7 @@ router.post(
 
     // save the file on the server
     const ContentRootPath = _path.resolve(_path.join(__dirname, "../.."));
+    // @ts-ignore
     const fileSavePath = _path.join(
       ContentRootPath,
       _path.basename(req.file.originalname)
@@ -192,13 +99,16 @@ router.post(
     // upload file to OSS Bucket
     const bucketKey = Utils.NickName.toLowerCase() + "-designautomation";
     try {
+      // @ts-ignore
       let payload = new ForgeAPI.PostBucketsPayload();
       payload.bucketKey = bucketKey;
       payload.policyKey = "transient"; // expires in 24h
       await new ForgeAPI.BucketsApi().createBucket(
         payload,
         {},
+        // @ts-ignore
         req.oauth_client,
+        // @ts-ignore
         req.oauth_token
       );
     } catch (ex) {
@@ -215,9 +125,12 @@ router.post(
         bucketKey,
         inputFileNameOSS,
         req.file.size,
+        // @ts-ignore
         contentStream,
         {},
+        // @ts-ignore
         req.oauth_client,
+        // @ts-ignore
         req.oauth_token
       );
     } catch (ex) {
@@ -232,6 +145,7 @@ router.post(
     const inputFileArgument = {
       url: `https://developer.api.autodesk.com/oss/v2/buckets/${bucketKey}/objects/${inputFileNameOSS}`,
       headers: {
+        // @ts-ignore
         Authorization: `Bearer ${req.oauth_token.access_token}`,
       },
     };
@@ -257,7 +171,9 @@ router.post(
         bucketKey,
         inputFileNameOSS,
         outputFileNameOSS,
+        // @ts-ignore
         req.oauth_client,
+        // @ts-ignore
         req.oauth_token
       );
       signedUrl = await new ForgeAPI.ObjectsApi().createSignedResource(
@@ -265,12 +181,15 @@ router.post(
         outputFileNameOSS,
         {
           minutesExpiration: 60,
+          // @ts-ignore
           singleUse: true,
         },
         {
           access: "write",
         },
+        // @ts-ignore
         req.oauth_client,
+        // @ts-ignore
         req.oauth_token
       );
       signedUrl = signedUrl.body.signedUrl;
@@ -286,17 +205,20 @@ router.post(
         Authorization: "",
         "Content-type": "application/octet-stream",
       },
+      // @ts-ignore
       verb: dav3.Verb.put,
     };
 
     const callbackUrl = `${config.credentials.webhook_url}/api/forge/callback/designautomation?id=${browerConnectionId}&outputFileName=${outputFileNameOSS}&inputFileName=${inputFileNameOSS}`;
     const workItemSpec = {
       activityId: activityName,
+      // @ts-ignore
       arguments: {
         inputFile: inputFileArgument,
         inputJson: inputJsonArgument,
         outputFile: outputFileArgument,
         onComplete: {
+          // @ts-ignore
           verb: dav3.Verb.post,
           url: callbackUrl,
         },
@@ -304,7 +226,9 @@ router.post(
     };
     let workItemStatus = null;
     try {
+      // @ts-ignore
       const api = await Utils.dav3API(req.oauth_token);
+      // @ts-ignore
       workItemStatus = await api.createWorkItem(workItemSpec);
     } catch (ex) {
       console.error(ex);
@@ -346,6 +270,7 @@ router.post(
         try {
           const signedUrl = await objectsApi.createSignedResource(
             bucketKey,
+            // @ts-ignore
             req.query.outputFileName,
             {
               minutesExpiration: 10,
@@ -354,7 +279,9 @@ router.post(
             {
               access: "read",
             },
+            // @ts-ignore
             req.oauth_client,
+            // @ts-ignore
             req.oauth_token
           );
           socketIO
@@ -375,8 +302,11 @@ router.post(
       try {
         objectsApi.deleteObject(
           bucketKey,
+          // @ts-ignore
           req.query.inputFileName,
+          // @ts-ignore
           req.oauth_client,
+          // @ts-ignore
           req.oauth_token
         );
       } catch (ex) {
@@ -391,7 +321,9 @@ router.post(
 router.delete(
   "/forge/designautomation/account",
   async (/*ClearAccount*/ req, res) => {
+    // @ts-ignore
     let api = await Utils.dav3API(req.oauth_token);
+    // @ts-ignore
     await api.deleteForgeApp("me");
     res.status(200).end();
   }

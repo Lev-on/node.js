@@ -1,7 +1,6 @@
 {
   "name": "Node.js",
   "version": "1.0.0",
-  "description": "",
   "main": "index.js",
   "scripts": {
     "start": "nodemon --inspect start.js"
@@ -19,5 +18,14 @@
     "form-data": "^4.0.0",
     "multer": "^1.4.3",
     "socket.io": "^4.1.3"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Lev-on/node.js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Lev-on/node.js/issues"
+  },
+  "homepage": "https://github.com/Lev-on/node.js#readme",
+  "description": ""
 }

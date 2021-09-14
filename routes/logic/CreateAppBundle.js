@@ -1,4 +1,5 @@
 const _path = require("path");
+// @ts-ignore
 const dav3 = require("autodesk.forge.designautomation");
 const { Utils } = require("../utils");
 // const { getAviEngine } = require("./logic/GetAvailableEngines");
@@ -16,11 +17,11 @@ const createAppBundle = async (req, res) => {
     Utils.LocalBundlesFolder,
     zipFileName + ".zip"
   );
-
   // get defined app bundles
   const api = await Utils.dav3API(req.oauth_token);
   let appBundles = null;
   try {
+    // @ts-ignore
     appBundles = await api.getAppBundles();
   } catch (ex) {
     console.error(ex);
@@ -33,6 +34,7 @@ const createAppBundle = async (req, res) => {
   let newAppVersion = null;
   const qualifiedAppBundleId = `${Utils.NickName}.${appBundleName}+${Utils.Alias}`;
   if (!appBundles.data.includes(qualifiedAppBundleId)) {
+    // @ts-ignore
     const appBundleSpec = dav3.AppBundle.constructFromObject({
       package: appBundleName,
       engine: engineName,
@@ -40,6 +42,7 @@ const createAppBundle = async (req, res) => {
       description: `Description for ${appBundleName}`,
     });
     try {
+      // @ts-ignore
       newAppVersion = await api.createAppBundle(appBundleSpec);
     } catch (ex) {
       console.error(ex);
@@ -53,6 +56,7 @@ const createAppBundle = async (req, res) => {
       version: 1,
     };
     try {
+      // @ts-ignore
       const newAlias = await api.createAppBundleAlias(appBundleName, aliasSpec);
     } catch (ex) {
       console.error(ex);
@@ -67,6 +71,7 @@ const createAppBundle = async (req, res) => {
       description: appBundleName,
     };
     try {
+      // @ts-ignore
       newAppVersion = await api.createAppBundleVersion(
         appBundleName,
         appBundleSpec
@@ -82,6 +87,7 @@ const createAppBundle = async (req, res) => {
       version: newAppVersion.version,
     };
     try {
+      // @ts-ignore
       const newAlias = await api.modifyAppBundleAlias(
         appBundleName,
         Utils.Alias,
