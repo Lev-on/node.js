@@ -196,6 +196,9 @@ function startConnection(onReady) {
   connection.on("downloadResult", function (url) {
     writeLog('<a href="' + url + '">Download result file here</a>');
   });
+  connection.on("downloadResultZip", function (url) {
+    writeLog('<a href="' + url + '">Download Zip result file here</a>');
+  });
 
   connection.on("downloadReport", function (url) {
     writeLog('<a href="' + url + '">Download report file here</a>');

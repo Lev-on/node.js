@@ -4,6 +4,7 @@ const _path = require("path");
 const express = require("express");
 const cookieSession = require("cookie-session");
 const config = require("./config");
+const { downloadZip } = require("./routes/logic/DownloadZip");
 
 if (!config.credentials.client_id || !config.credentials.client_secret)
   return console.error(
@@ -25,6 +26,7 @@ app.use(
   })
 );
 app.use("/api", require("./routes/DesignAutomation"));
+app.get("/api/zipdownload/:file_path", downloadZip);
 
 app.set("port", process.env.PORT || 3001);
 
