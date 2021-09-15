@@ -121,7 +121,7 @@ const startWorkitem = async (req, res) => {
     verb: dav3.Verb.put,
   };
 
-  const callbackUrl = `${config.credentials.webhook_url}/api/forge/callback/designautomation?id=${browerConnectionId}&outputFileName=${outputFileNameOSS}&inputFileName=${inputFileNameOSS}`;
+  const callbackUrl = `${process.env.FORGE_WEBHOOK_URL}/api/forge/callback/designautomation?id=${browerConnectionId}&outputFileName=${outputFileNameOSS}&inputFileName=${inputFileNameOSS}`;
   const workItemSpec = {
     activityId: activityName,
     arguments: {

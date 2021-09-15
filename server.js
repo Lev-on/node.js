@@ -28,6 +28,6 @@ app.use(
 app.use("/api", require("./routes/DesignAutomation"));
 app.get("/api/zipdownload/:file_path", downloadZip);
 
-app.set("port", process.env.PORT || 3001);
+app.set("port", process.env.PORT || 3004);
 
 module.exports = app;
